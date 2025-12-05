@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIS 선박 추적 시스템 - Cesium 3D</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        #cesiumContainer {
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* 컨트롤 패널 */
+        #controlPanel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(38, 45, 58, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            min-width: 280px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #controlPanel h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #4a90d9;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #controlPanel h2::before {
+            content: "🚢";
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #a0a0a0;
+        }
+
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #3d4654;
+            border-radius: 5px;
+            background: #1a1f28;
+            color: white;
+            font-size: 14px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90d9, #357abd);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a9fe9, #4589cc);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #5a6570, #4a5560);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #6a7580, #5a6570);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+        }
+
+        /* 선박 정보 패널 */
+        #shipInfoPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(38, 45, 58, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            min-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #shipInfoPanel h3 {
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+
+        .ship-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #3d4654;
+            font-size: 13px;
+        }
+
+        .ship-info-row .label {
+            color: #a0a0a0;
+        }
+
+        .ship-info-row .value {
+            font-weight: bold;
+            color: #4a90d9;
+        }
+
+        #closeInfoPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #a0a0a0;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        #closeInfoPanel:hover {
+            color: white;
+        }
+
+        /* 통계 패널 */
+        #statsPanel {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            background: rgba(38, 45, 58, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a90d9;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #a0a0a0;
+            margin-top: 5px;
+        }
+
+        /* 로딩 오버레이 */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loader {
+            text-align: center;
+            color: white;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #3d4654;
+            border-top: 4px solid #4a90d9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 범례 */
+        #legend {
+            position: absolute;
+            bottom: 30px;
+            right: 10px;
+            background: rgba(38, 45, 58, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #legend h4 {
+            margin-bottom: 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #3d4654;
+            padding-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        /* 검색 결과 */
+        #searchResults {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .search-result-item {
+            padding: 8px;
+            background: #1a1f28;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #2a3040;
+        }
+
+        /* 알림 */
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(40, 167, 69, 0.95);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 3000;
+            display: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #notification.error {
+            background: rgba(220, 53, 69, 0.95);
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+
+    <!-- 컨트롤 패널 -->
+    <div id="controlPanel">
+        <h2>AIS 선박 추적</h2>
+
+        <div class="control-group">
+            <label>데이터 소스</label>
+            <select id="dataSource">
+                <option value="sample">샘플 데이터 (데모)</option>
+                <option value="custom">사용자 API</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="apiKeyGroup" style="display: none;">
+            <label>AIS API Key</label>
+            <input type="text" id="aisApiKey" placeholder="API 키 입력">
+        </div>
+
+        <div class="control-group">
+            <label>지역 선택</label>
+            <select id="regionSelect">
+                <option value="korea">한국 해역</option>
+                <option value="busan">부산항</option>
+                <option value="incheon">인천항</option>
+                <option value="ulsan">울산항</option>
+                <option value="global">전 세계</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>선박 유형 필터</label>
+            <select id="shipTypeFilter">
+                <option value="all">모든 선박</option>
+                <option value="cargo">화물선</option>
+                <option value="tanker">유조선</option>
+                <option value="passenger">여객선</option>
+                <option value="fishing">어선</option>
+                <option value="other">기타</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>선박 검색</label>
+            <input type="text" id="shipSearch" placeholder="선박명 또는 MMSI 입력">
+            <div id="searchResults"></div>
+        </div>
+
+        <button class="btn btn-primary" onclick="loadAISData()">🔄 데이터 새로고침</button>
+        <button class="btn btn-secondary" onclick="toggleAutoRefresh()">⏱️ 자동 갱신: <span id="autoRefreshStatus">OFF</span></button>
+        <button class="btn btn-success" onclick="flyToKorea()">🇰🇷 한국 해역 이동</button>
+    </div>
+
+    <!-- 선박 정보 패널 -->
+    <div id="shipInfoPanel">
+        <button id="closeInfoPanel" onclick="closeShipInfo()">✕</button>
+        <h3>🚢 선박 상세 정보</h3>
+        <div id="shipInfoContent"></div>
+    </div>
+
+    <!-- 통계 패널 -->
+    <div id="statsPanel">
+        <div class="stat-item">
+            <div class="stat-value" id="totalShips">0</div>
+            <div class="stat-label">총 선박 수</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="movingShips">0</div>
+            <div class="stat-label">항해 중</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="anchoredShips">0</div>
+            <div class="stat-label">정박 중</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value" id="lastUpdate">-</div>
+            <div class="stat-label">마지막 업데이트</div>
+        </div>
+    </div>
+
+    <!-- 범례 -->
+    <div id="legend">
+        <h4>선박 유형</h4>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FF6B6B;"></div>
+            <span>화물선</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4ECDC4;"></div>
+            <span>유조선</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #45B7D1;"></div>
+            <span>여객선</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #96CEB4;"></div>
+            <span>어선</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFEAA7;"></div>
+            <span>기타</span>
+        </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loadingOverlay">
+        <div class="loader">
+            <div class="loader-spinner"></div>
+            <div>AIS 데이터 로딩 중...</div>
+        </div>
+    </div>
+
+    <!-- 알림 -->
+    <div id="notification"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
