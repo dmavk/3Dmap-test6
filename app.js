@@ -369,30 +369,58 @@ function displayShips(ships) {
 // 선박 아이콘 생성 (SVG 캔버스)
 function createShipIcon(color, heading) {
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = 40;
+    canvas.height = 40;
     const ctx = canvas.getContext('2d');
 
     // 캔버스 중심으로 이동 및 회전
-    ctx.translate(16, 16);
+    ctx.translate(20, 20);
     ctx.rotate((heading || 0) * Math.PI / 180);
 
-    // 선박 모양 그리기 (위쪽이 선수)
+    // 배 형태 그리기 (위쪽이 선수)
     ctx.beginPath();
-    ctx.moveTo(0, -12);  // 선수
-    ctx.lineTo(6, 8);    // 우현 선미
-    ctx.lineTo(0, 4);    // 선미 중앙
-    ctx.lineTo(-6, 8);   // 좌현 선미
+
+    // 선수 (뾰족한 앞부분)
+    ctx.moveTo(0, -16);
+
+    // 우현 (오른쪽) - 곡선으로 선체 표현
+    ctx.quadraticCurveTo(6, -10, 7, -4);
+    ctx.lineTo(7, 6);
+
+    // 선미 (뒷부분) - 평평한 모양
+    ctx.lineTo(5, 10);
+    ctx.lineTo(-5, 10);
+
+    // 좌현 (왼쪽)
+    ctx.lineTo(-7, 6);
+    ctx.lineTo(-7, -4);
+    ctx.quadraticCurveTo(-6, -10, 0, -16);
+
     ctx.closePath();
 
-    // 색상 채우기
+    // 선체 색상 채우기
     ctx.fillStyle = color.toCssColorString();
     ctx.fill();
 
-    // 테두리
+    // 선체 테두리
     ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 갑판 (중앙 라인)
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    ctx.lineTo(0, 6);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.lineWidth = 1;
     ctx.stroke();
+
+    // 선교 (브릿지) - 작은 사각형
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillRect(-3, 0, 6, 5);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(-3, 0, 6, 5);
 
     return canvas.toDataURL();
 }
