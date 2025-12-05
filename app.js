@@ -209,6 +209,81 @@ function addMaritimeRoutes() {
     });
 }
 
+// 항구 아이콘 생성 (닻 모양)
+function createPortIcon() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+
+    // 배경 원 (그라데이션)
+    const gradient = ctx.createRadialGradient(24, 24, 0, 24, 24, 22);
+    gradient.addColorStop(0, '#FFD700');
+    gradient.addColorStop(1, '#FFA500');
+
+    ctx.beginPath();
+    ctx.arc(24, 24, 20, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.strokeStyle = '#8B4513';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 닻 그리기
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 닻 상단 고리
+    ctx.beginPath();
+    ctx.arc(24, 12, 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 닻 중심 세로선
+    ctx.beginPath();
+    ctx.moveTo(24, 16);
+    ctx.lineTo(24, 38);
+    ctx.stroke();
+
+    // 닻 가로선 (상단)
+    ctx.beginPath();
+    ctx.moveTo(16, 20);
+    ctx.lineTo(32, 20);
+    ctx.stroke();
+
+    // 닻 하단 곡선 (좌)
+    ctx.beginPath();
+    ctx.moveTo(24, 38);
+    ctx.quadraticCurveTo(14, 36, 12, 30);
+    ctx.stroke();
+
+    // 닻 하단 화살표 (좌)
+    ctx.beginPath();
+    ctx.moveTo(12, 30);
+    ctx.lineTo(10, 33);
+    ctx.moveTo(12, 30);
+    ctx.lineTo(15, 32);
+    ctx.stroke();
+
+    // 닻 하단 곡선 (우)
+    ctx.beginPath();
+    ctx.moveTo(24, 38);
+    ctx.quadraticCurveTo(34, 36, 36, 30);
+    ctx.stroke();
+
+    // 닻 하단 화살표 (우)
+    ctx.beginPath();
+    ctx.moveTo(36, 30);
+    ctx.lineTo(38, 33);
+    ctx.moveTo(36, 30);
+    ctx.lineTo(33, 32);
+    ctx.stroke();
+
+    return canvas.toDataURL();
+}
+
 // 주요 항구 마커 추가
 function addPortMarkers() {
     const ports = [
@@ -222,26 +297,29 @@ function addPortMarkers() {
         { name: "포항항", lon: 129.38, lat: 36.03 }
     ];
 
+    const portIcon = createPortIcon();
+
     ports.forEach(port => {
         viewer.entities.add({
             name: port.name,
             position: Cesium.Cartesian3.fromDegrees(port.lon, port.lat),
-            point: {
-                pixelSize: 12,
-                color: Cesium.Color.WHITE,
-                outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 2,
-                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
+            billboard: {
+                image: portIcon,
+                width: 40,
+                height: 40,
+                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
             },
             label: {
                 text: port.name,
-                font: '14px sans-serif',
+                font: 'bold 16px sans-serif',
                 fillColor: Cesium.Color.WHITE,
-                outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 2,
+                outlineColor: Cesium.Color.fromCssColorString('#1a4b77'),
+                outlineWidth: 3,
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                pixelOffset: new Cesium.Cartesian2(0, -15),
+                verticalOrigin: Cesium.VerticalOrigin.TOP,
+                pixelOffset: new Cesium.Cartesian2(0, 5),
                 heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                 disableDepthTestDistance: Number.POSITIVE_INFINITY
             }
